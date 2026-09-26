@@ -40,11 +40,11 @@
 
 Rostering for Claude Code does the job you pay Deputy for, as a Postgres database and a set of agent commands. There is no web front end. You open the folder in [Claude Code](https://claude.com/claude-code) (or Codex, OpenCode, Cursor: see `AGENTS.md`) and ask for what you want in plain language. It runs the right query, and it can answer questions the Deputy dashboard cannot.
 
-<!-- TODO(author): the annual bill. One sentence: what a 10 to 50 person business typically pays Deputy per year, all in, with a source. -->
+The bill this replaces grows with every hire. Deputy prices per person per month: Lite at A$6.75, Core at A$8.75, Pro at A$13, with Payroll (A$5) and HR (A$3.50) add-ons and a A$30 monthly minimum ([deputy.com/au/pricing](https://www.deputy.com/au/pricing)). One cafe with 20 staff on Core pays about A$2,100 a year; three sites and 60 staff on Pro is about A$9,400; a 150-staff hospitality group clears A$20,000 a year, every year, for rosters and timesheets.
 
 Want the same thing with a web front end, or built on a different stack? That is a customisation, and it is exactly what Enterprise DNA does: [book a call](https://enterprisedna.co/omni/book/?utm_source=github&utm_medium=readme&utm_campaign=deputy).
 
-<!-- TODO(author): two or three sentences on what this specific product covers and who it is for. -->
+This one covers the operating record of a shift business: the sites and their areas, the staff with their paper (right-to-work expiry, duty manager certificate), who can work when, the roster from draft to published, the timesheets from clock-in to approval, and the leave book. The New Zealand rules are built in as gates with their sources cited: nobody is rostered past their recorded right to work, nobody is rostered over approved leave or inside the rest window, a licensed site trading without a certified duty manager is named, and a meal break shorter than the Employment Relations Act requires is said out loud. Payroll stays in the payroll system, deliberately; one export hands it the approved hours.
 
 ## Why no front end
 
@@ -63,7 +63,7 @@ npm install
 npm run demo
 ```
 
-Then open the folder in Claude Code and type a slash command. <!-- TODO(author): name the first command to try. -->
+Then open the folder in Claude Code and type `/attention`. The demo business has a bartender on the published roster twelve days past his recorded right to work, a licensed site trading Saturday with no certified duty manager, a forgotten clock-out, a shift rostered over approved leave, and a chef closing at eleven and opening at seven; the answer shows you exactly how this system thinks.
 
 ### Use it with your own Postgres or Supabase
 
@@ -71,15 +71,67 @@ Copy `.env.example` to `.env`, set `DATABASE_URL`, then `npm run migrate`. Same 
 
 ## The commands
 
-<!-- TODO(author): a table of the slash commands in .claude/commands and what each one does. -->
-
 | Command | What it does |
 |---|---|
-| `/...` | ... |
+| `/attention` | Everything that wants a decision, worst first. A right-to-work breach outranks everything |
+| `/roster` | The week day by day, costed, with open and late-draft shifts loud |
+| `/build-roster` | Draft next week from availability, last week's pattern and the leave book |
+| `/publish` | Drafts become the real roster, gates checked shift by shift |
+| `/open-shifts` | Unfilled shifts, and who could lawfully take each one |
+| `/clock` | In, out, and fixing the forgotten clock-out honestly |
+| `/timesheets` | The week's sheets: worked hours, breaks, variance against the roster |
+| `/approve` | The approval queue. Confirms hours, never invents them |
+| `/leave` | Requests waiting, what each approval does to the roster |
+| `/availability` | Who can work when, the windows the roster builder reads first |
+| `/hours` | Rostered against worked by person, and anyone over the ceiling |
+| `/labour` | What the week costs by site and area, before it happens |
+| `/team` `/person` | The team with its paper; one person's whole card |
+| `/compliance` | The rule book run against the records, sources cited |
+| `/weekly-review` | The Monday review written from four commands |
+| `/log` | The agreed swap, the lateness chat, onto the record |
+| `/draft-roster-message` `/draft-open-shift-callout` | Drafts to `drafts/`; a person sends them |
+| `/import` | Bring the business across from Deputy, dry-run first |
+| `/customise` | Change a field, a threshold, a rule, in plain language |
+| `/new-view` | A new read-only dashboard page, described in plain language |
 
-## Instead of deputy
+## Instead of Deputy
 
-<!-- TODO(author): how to bring data across from Deputy; link docs/replace-deputy.md -->
+Export your people, timesheets and roster from Deputy (or Tanda, When I Work, or any rostering system that prints to CSV), then:
+
+```bash
+node scripts/roster.mjs import deputy --staff=people.csv --timesheets=timesheets.csv --shifts=shifts.csv --dry-run
+node scripts/roster.mjs import deputy --staff=people.csv --timesheets=timesheets.csv --shifts=shifts.csv
+```
+
+The importer matches common column-name variants, is idempotent (re-running updates instead of duplicating), and names every row it skips. Every imported person deliberately arrives with no right-to-work expiry and no duty manager certificate on record: the paper gets verified on the way in, not assumed from the old system. [docs/replace-deputy.md](docs/replace-deputy.md) covers exactly what carries over and what starts fresh, and why.
+
+### Ten questions your rostering dashboard cannot answer
+
+Each of these is one plain-language ask away in Claude Code, because the record is a database you own:
+
+1. Who is rostered next week whose right to work expires before their last shift?
+2. Which trading days this month had no certified duty manager rostered at the licensed site?
+3. Who closed and then opened inside ten hours in the last month, and how often?
+4. Which staff consistently work past their rostered finish, and what has that variance cost?
+5. Whose worked hours would have missed a legal meal break last week?
+6. What does next week's roster cost by site and area before I publish it, and against last week?
+7. Which timesheets have sat unapproved past the payroll cutoff, and whose pay do they hold up?
+8. If I approve every pending leave request, which published shifts go uncovered?
+9. Which open shifts have exactly one person whose availability, hours and rest window all fit?
+10. Whose right to work or duty manager certificate lapses inside 30 days?
+
+## Your first hour: ten things to ask for
+
+1. "Walk me through everything on the attention list and what clears each one."
+2. "Clock Emma out at yesterday 2pm; she forgot again."
+3. "Approve every clean timesheet and read me the ones with short breaks first."
+4. "Who can cover the open Saturday kitchen shift without breaking their rest window?"
+5. "Draft next week's roster from availability and last week's shape."
+6. "What does next week cost by area, against this week?"
+7. "Change the rest window to 11 hours." (a one-line settings change)
+8. "Grace's leave is approved: open her Tuesday shift and tell me who fits."
+9. "Import our people and timesheets from Deputy, dry run first."
+10. "Add a page that shows Saturday duty manager cover for the next eight weeks."
 
 ## Architecture
 

@@ -1,11 +1,49 @@
 [
   {
-    "name": "example",
-    "title": "TODO(author): the first document this industry must produce",
-    "for_each": "select gen_random_uuid() as id, 'Example' as name",
+    "name": "weekly-roster",
+    "title": "Weekly roster",
+    "for_each": "select l.id, l.name || ', week of ' || to_char((date_trunc('week', current_date))::date + 7, 'DD Mon YYYY') as name from locations l where exists (select 1 from shifts s where s.location_id = l.id and s.status = 'published' and s.on_date >= (date_trunc('week', current_date))::date + 7 and s.on_date < (date_trunc('week', current_date))::date + 14)",
     "file": "name",
     "sections": [
-      { "title": "Details", "sql": "select 'replace me' as item, $1::text as record_id" }
+      {
+        "title": "The roster",
+        "note": "Published shifts only. Post it where the team reads it; the notice window starts when they can see it.",
+        "sql": "select to_char(v.on_date, 'Dy DD Mon') as day, to_char(v.starts_ts, 'HH24:MI') as starts, to_char(v.ends_ts, 'HH24:MI') as ends, coalesce(v.area, '') as area, coalesce(v.staff, 'OPEN' || coalesce(': ' || v.role_needed, '')) as who, v.break_minutes as break_mins from v_shifts v where v.location_id = $1 and v.status = 'published' and v.on_date >= (date_trunc('week', current_date))::date + 7 and v.on_date < (date_trunc('week', current_date))::date + 14 order by v.on_date, v.starts_at, v.area"
+      },
+      {
+        "title": "Who to call",
+        "sql": "select st.name, st.role, st.phone from staff st where st.status = 'active' and exists (select 1 from shifts s where s.staff_id = st.id and s.location_id = $1 and s.status = 'published' and s.on_date >= (date_trunc('week', current_date))::date + 7 and s.on_date < (date_trunc('week', current_date))::date + 14) order by st.name"
+      }
+    ]
+  },
+  {
+    "name": "timesheet-summary",
+    "title": "Timesheet summary",
+    "for_each": "select st.id, st.name || ', ' || to_char(current_date - 13, 'DD Mon') || ' to ' || to_char(current_date, 'DD Mon YYYY') as name from staff st where exists (select 1 from timesheets t where t.staff_id = st.id and t.on_date >= current_date - 13 and t.clock_out_at is not null)",
+    "file": "name",
+    "sections": [
+      {
+        "title": "Hours worked",
+        "note": "The payroll handoff: approved rows are confirmed hours (Employment Relations Act 2000 s 130 record). This document states hours, never pay.",
+        "sql": "select t.ref, to_char(t.on_date, 'Dy DD Mon') as day, coalesce(t.site, '') as site, to_char(t.clock_in_at, 'HH24:MI') as clock_in, to_char(t.clock_out_at, 'HH24:MI') as clock_out, t.break_minutes as break_mins, round(t.worked_minutes / 60.0, 2) as worked_hours, t.status from v_timesheets t where t.staff_id = $1 and t.on_date >= current_date - 13 and t.clock_out_at is not null order by t.on_date"
+      },
+      {
+        "title": "Totals",
+        "sql": "select count(*) as sheets, round(sum(t.worked_minutes) / 60.0, 2) as total_hours, round(sum(t.worked_minutes) filter (where t.status = 'approved') / 60.0, 2) as approved_hours, sum(t.break_minutes) as total_break_minutes from v_timesheets t where t.staff_id = $1 and t.on_date >= current_date - 13 and t.clock_out_at is not null"
+      }
+    ]
+  },
+  {
+    "name": "leave-record",
+    "title": "Holiday and leave record",
+    "for_each": "select st.id, st.name from staff st where exists (select 1 from leave lv where lv.staff_id = st.id)",
+    "file": "name",
+    "sections": [
+      {
+        "title": "Leave on record",
+        "note": "The holiday and leave record the Holidays Act 2003 s 81 requires be kept. Balances and pay live in payroll.",
+        "sql": "select lv.ref, lv.type, to_char(lv.starts_on, 'DD Mon YYYY') as from_day, to_char(lv.ends_on, 'DD Mon YYYY') as to_day, lv.days, lv.status, to_char(lv.requested_on, 'DD Mon YYYY') as requested, coalesce(to_char(lv.decided_on, 'DD Mon YYYY'), '') as decided, coalesce(lv.note, '') as note from v_leave lv where lv.staff_id = $1 order by lv.starts_on"
+      }
     ]
   }
 ]

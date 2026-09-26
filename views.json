@@ -2,12 +2,55 @@
   {
     "name": "week",
     "title": "This week",
-    "subtitle": "Rostering for Claude Code: what needs attention, rendered by npm run view",
+    "subtitle": "Rostering for Claude Code: the roster ahead and what needs attention, rendered by npm run view",
     "sections": [
       {
-        "title": "Needs attention",
-        "note": "TODO(author): point this at the industry's attention view (overdue, stuck, quiet).",
-        "sql": "select 'replace me' as item, 'TODO(author)' as why"
+        "title": "Needs a decision",
+        "note": "Worst first. A person rostered past their right-to-work expiry outranks everything.",
+        "sql": "select reason, label, who, place, detail from v_attention order by rank, days desc nulls last limit 15"
+      },
+      {
+        "title": "The next seven days",
+        "sql": "select to_char(on_date, 'Dy DD Mon') as day, to_char(starts_ts, 'HH24:MI') as starts, to_char(ends_ts, 'HH24:MI') as ends, site, area, coalesce(staff, 'OPEN' || coalesce(': ' || role_needed, '')) as who, state from v_shifts where on_date >= current_date and on_date < current_date + 7 and status <> 'cancelled' order by on_date, site, starts_at"
+      },
+      {
+        "title": "Open shifts looking for a person",
+        "sql": "select ref, to_char(on_date, 'Dy DD Mon') as day, to_char(starts_ts, 'HH24:MI') as starts, to_char(ends_ts, 'HH24:MI') as ends, site, area, coalesce(role_needed, 'any role') as needs from v_open_shifts order by on_date"
+      },
+      {
+        "title": "Timesheets awaiting approval",
+        "note": "Approval is the payroll gate. Late approval is late pay.",
+        "sql": "select ref, staff, to_char(on_date, 'Dy DD Mon') as day, to_char(clock_in_at, 'HH24:MI') as clock_in, to_char(clock_out_at, 'HH24:MI') as clock_out, break_minutes, round(worked_minutes / 60.0, 2) as worked_hours, state from v_timesheets where status = 'submitted' order by on_date"
+      },
+      {
+        "title": "Leave waiting for an answer",
+        "sql": "select ref, staff, type, to_char(starts_on, 'DD Mon') as from_day, to_char(ends_on, 'DD Mon') as to_day, days, waiting_days, state from v_leave where status = 'requested' order by starts_on"
+      }
+    ]
+  },
+  {
+    "name": "hours",
+    "title": "The hours and the money",
+    "subtitle": "Rostering for Claude Code: next week costed, worked against rostered, rendered by npm run view",
+    "sections": [
+      {
+        "title": "Next week by person",
+        "note": "Rostered paid hours and what they cost at each person's rate. Costing only; payroll pays people.",
+        "sql": "select staff as name, count(*) as shifts, round(sum(paid_minutes) / 60.0, 1) as hours, round(sum(cost_cents) / 100.0, 2) as cost_nzd from v_shifts where status in ('published', 'draft') and staff_id is not null and on_date >= (date_trunc('week', current_date))::date + 7 and on_date < (date_trunc('week', current_date))::date + 14 group by staff order by sum(paid_minutes) desc"
+      },
+      {
+        "title": "Next week by site and area",
+        "sql": "select site, coalesce(area, '(no area)') as area, count(*) as shifts, count(*) filter (where staff_id is null) as open, round(sum(paid_minutes) / 60.0, 1) as hours, round(sum(cost_cents) / 100.0, 2) as cost_nzd from v_shifts where status in ('published', 'draft') and on_date >= (date_trunc('week', current_date))::date + 7 and on_date < (date_trunc('week', current_date))::date + 14 group by site, area order by site, sum(cost_cents) desc nulls last"
+      },
+      {
+        "title": "Worked against rostered, last seven days",
+        "note": "A big plus is unmanaged overtime; a big minus is a service that ran short.",
+        "sql": "select ref, staff, to_char(on_date, 'Dy DD Mon') as day, round(worked_minutes / 60.0, 2) as worked_hours, variance_minutes, state from v_timesheets where on_date >= current_date - 7 and clock_out_at is not null order by abs(coalesce(variance_minutes, 0)) desc"
+      },
+      {
+        "title": "Rest clashes on the books",
+        "note": "Two shifts closer together than the rest window.",
+        "sql": "select staff, first_ref, then_ref, to_char(then_date, 'Dy DD Mon') as day, gap_hours from v_rest_clashes order by then_date"
       }
     ]
   }

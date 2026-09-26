@@ -22,7 +22,26 @@ Fill this in once. A worker with context knows. A worker without it guesses.
 
 | When the operator asks for... | Use this |
 |---|---|
-| <!-- TODO(author): one row per slash command --> | `/...` |
+| "what needs my attention", "what's wrong this morning" | `/attention` |
+| "show me the roster", "who's on this week / next week" | `/roster` |
+| "roster next week", "build the roster" | `/build-roster` |
+| "publish the roster", "send the roster out" | `/publish` |
+| "what shifts are unfilled", "who can cover Saturday" | `/open-shifts` |
+| "clock X in / out", "X forgot to clock out" | `/clock` |
+| "show me the timesheets", "who worked what" | `/timesheets` |
+| "approve the timesheets", "clear the queue" | `/approve` |
+| "X wants leave", "what leave is waiting" | `/leave` |
+| "X can only work weekends now", "who's available Tuesday" | `/availability` |
+| "who's over their hours", "rostered vs worked" | `/hours` |
+| "what does the week cost", "labour by site" | `/labour` |
+| "show me the team", "pull up X" | `/team`, `/person` |
+| "are we compliant", "check the rules" | `/compliance` |
+| "Monday review", "how are we set for the week" | `/weekly-review` |
+| "note that X agreed to swap", "log the conversation" | `/log` |
+| "message everyone their shifts", "ask who can cover" | `/draft-roster-message`, `/draft-open-shift-callout` |
+| "bring our Deputy data across" | `/import` |
+| "add a field", "change a rule", "rename an area" | `/customise` |
+| "a page that shows..." | `/new-view` |
 
 If an ask fits nothing here, run the CLI directly (`npm run <cli> -- --help`) and then propose a new command for it.
 
